@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/businessServer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/businessServer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/OfflineRecommender/OfflineRecommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/OfflineRecommender/OfflineRecommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/OfflineRecommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/OfflineRecommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/StreamingRecommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/StreamingRecommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/dataloader/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/dataloader/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/kafkaStream/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/kafkaStream/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/statiscsRecommender/statiscsRecommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/statiscsRecommender/statiscsRecommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/statisticsRecommender/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/statisticsRecommender/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/statisticsRecommender/src/main/scala" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/website/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/website/src/main/resources" charset="UTF-8" />
+  </component>
+</project>
