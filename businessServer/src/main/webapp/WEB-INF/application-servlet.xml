@@ -10,7 +10,7 @@
                            http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd">
 
     <context:component-scan base-package="com.server.rest"/>
-
+    <import resource="classpath:application.xml"/>
     <!--能够让web启用web方面的注解-->
     <mvc:annotation-driven>
         <!--给MVC框架注册信息转换器-->
@@ -26,20 +26,7 @@
                         <value>application/json;charset=UTF-8</value>
                     </list>
                 </property>
-                <property name="objectMapper">
-                    <bean class="org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean">
-                        <property name="featuresToEnable">
-                            <array>
-                                <util:constant static-field="com.fasterxml.jackson.databind.SerializationFeature.CLOSE_CLOSEABLE"/>
-                            </array>
-                        </property>
-                        <property name="featuresToDisable">
-                            <array>
-                                <util:constant static-field="com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_BEANS"/>
-                            </array>
-                        </property>
-                    </bean>
-                </property>
+                <property name="objectMapper" ref="objectMapper"/>
             </bean>
 
         </mvc:message-converters>

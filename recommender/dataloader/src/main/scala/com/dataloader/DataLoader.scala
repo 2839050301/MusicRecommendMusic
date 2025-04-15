@@ -12,10 +12,10 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient
 
 import java.net.InetAddress
 
-
 // 导入 Spark 相关的类，用于构建 Spark 应用程序
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions._
 
 /**
  * 歌曲信息的样例类
@@ -64,7 +64,7 @@ case class Genre(val genre_id: Int, val genre_name: String)
  * @param tag        标签
  * @param language   语言
  */
-case class Tag(val song_id:Long,val tag:String,val language:String)
+case class Tag(val song_id: Long, val tag: String, val language: String)
 
 /**
  * MongoDB 配置信息的样例类
@@ -89,7 +89,7 @@ object DataLoader {
   val USER_DATA_PATH = "D:\\MusicSystem\\MusicRecommendSystem\\recommender\\dataloader\\src\\main\\resources\\user.csv"
   val USER_LIKE_DATA_PATH = "D:\\MusicSystem\\MusicRecommendSystem\\recommender\\dataloader\\src\\main\\resources\\user_like.csv"
   val GENRE_DATA_PATH = "D:\\MusicSystem\\MusicRecommendSystem\\recommender\\dataloader\\src\\main\\resources\\genre.csv"
-  val TAG_DATA_PATH="D:\\MusicSystem\\MusicRecommendSystem\\recommender\\dataloader\\src\\main\\resources\\tag.csv"
+  val TAG_DATA_PATH = "D:\\MusicSystem\\MusicRecommendSystem\\recommender\\dataloader\\src\\main\\resources\\tag.csv"
 
   // 定义 MongoDB 中各个集合的名称
   val MONGODB_SONGS_COLLECTION = "Songs"
@@ -97,7 +97,7 @@ object DataLoader {
   val MONGODB_USER_COLLECTION = "User"
   val MONGODB_USER_LIKE_COLLECTION = "User_like"
   val MONGODB_GENRE_COLLECTION = "Genre"
-  val MONGODB_TAG_COLLECTION="Tag"
+  val MONGODB_TAG_COLLECTION = "Tag"
   // 定义 Elasticsearch 中歌曲索引的名称
   val ES_SONGS_INDEX = "Songs"
 
@@ -183,39 +183,34 @@ object DataLoader {
       }
     }).toDF()
 
-    //从 CSV 文件中加载歌曲流派数据，生成 RDD
+    // 从 CSV 文件中加载歌曲标签和语言数据，生成 RDD
     val tagRDD = spark.sparkContext.textFile(TAG_DATA_PATH)
-    // 将歌曲流派 RDD 转换为 DataFrame
+    // 将歌曲标签和语言 RDD 转换为 DataFrame
     val tagDF = tagRDD.flatMap(item => {
       val attr = item.split(",")
-      if (attr.length >= 2) {
+      if (attr.length >= 3) {
         Some(Tag(attr(0).toLong, attr(1).trim, attr(2).trim))
       } else {
         None
       }
     }).toDF()
 
+    // 处理 tag 和 language 数据
+    val newTagDF = tagDF.groupBy($"song_id").agg(
+      concat_ws("|", collect_list($"tag")).as("tags"),
+      concat_ws("|", collect_list($"language")).as("languages")
+    )
+
+    // 合并歌曲数据和标签、语言数据
+    val songWithTagsDF = songsDF.join(newTagDF, songsDF("sid") === newTagDF("song_id"), "left")
+
     // 隐式定义 MongoDB 配置信息
     implicit val mongoConfig = MongoConfig(config.get("mongo.uri").get, config.get("mongo.db").get)
     // 将数据保存到 MongoDB 中
-    storeDataInMongoDB(songsDF, singerDF, userDF, user_likeDF, genreDF,tagDF)
+    storeDataInMongoDB(songWithTagsDF, singerDF, userDF, user_likeDF, genreDF)
 
-
-    //需要将Tag数据集进行处理，处理后形式为sid，tag1|tag2|tag3
-
-    import org.apache.spark.sql.functions._
-    /**
-     * song_id    tags
-     *    1       tag1|tag2|tag3
-     */
-    val newTag=tagDF.groupBy($"song_id").agg(concat_ws("|",collect_list($"tag")).as("tags")).select("song_id","tags")
-
-    //需要将处理后的Tag数据，和songs数据融合，产生新的songs数据
-    val songWithTagsDF = songsDF.join(newTag, songsDF("sid") === newTag("song_id"), "left")
-
-
-    implicit val esConfig = ESConfig(config.get("es.httpHosts").get,config.get("es.transportHosts").get, config.get("es.index").get, config.get("es.cluster.name").get)
-    // 预留将数据保存到 Elasticsearch 中的方法调用
+    implicit val esConfig = ESConfig(config.get("es.httpHosts").get, config.get("es.transportHosts").get, config.get("es.index").get, config.get("es.cluster.name").get)
+    // 将数据保存到 Elasticsearch 中
     storeDataInES(songWithTagsDF)
 
     // 关闭 SparkSession，释放资源
@@ -223,7 +218,7 @@ object DataLoader {
   }
 
   // 将数据保存到 MongoDB 中的方法
-  def storeDataInMongoDB(songsDF: DataFrame, singerDF: DataFrame, userDF: DataFrame, user_likeDF: DataFrame, genreDF: DataFrame,tagDF:DataFrame)(implicit mongoConfig: MongoConfig): Unit = {
+  def storeDataInMongoDB(songsDF: DataFrame, singerDF: DataFrame, userDF: DataFrame, user_likeDF: DataFrame, genreDF: DataFrame)(implicit mongoConfig: MongoConfig): Unit = {
     // 创建一个 MongoDB 客户端连接
     val mongoClient = MongoClient(MongoClientURI(mongoConfig.uri))
 
@@ -232,7 +227,8 @@ object DataLoader {
     mongoClient(mongoConfig.db)(MONGODB_SINGER_COLLECTION).dropCollection()
     mongoClient(mongoConfig.db)(MONGODB_USER_COLLECTION).dropCollection()
     mongoClient(mongoConfig.db)(MONGODB_USER_LIKE_COLLECTION).dropCollection()
-    mongoClient(mongoConfig.db)(MONGODB_TAG_COLLECTION).dropCollection()
+    mongoClient(mongoConfig.db)(MONGODB_GENRE_COLLECTION).dropCollection()
+
     // 将各个 DataFrame 数据写入到 MongoDB 对应的集合中
     songsDF
       .write
@@ -269,13 +265,6 @@ object DataLoader {
       .mode("overwrite")
       .format("com.mongodb.spark.sql")
       .save()
-    tagDF
-      .write
-      .option("uri", mongoConfig.uri)
-      .option("collection", MONGODB_TAG_COLLECTION)
-      .mode("overwrite")
-      .format("com.mongodb.spark.sql")
-      .save()
 
     // 为 MongoDB 中的各个集合创建索引，提高查询性能
     mongoClient(mongoConfig.db)(MONGODB_SONGS_COLLECTION).createIndex(MongoDBObject("sid" -> 1))
@@ -283,41 +272,39 @@ object DataLoader {
     mongoClient(mongoConfig.db)(MONGODB_USER_COLLECTION).createIndex(MongoDBObject("userId" -> 1))
     mongoClient(mongoConfig.db)(MONGODB_USER_LIKE_COLLECTION).createIndex(MongoDBObject("userId" -> 1))
     mongoClient(mongoConfig.db)(MONGODB_GENRE_COLLECTION).createIndex(MongoDBObject("genre_id" -> 1))
-    mongoClient(mongoConfig.db)(MONGODB_TAG_COLLECTION).createIndex(MongoDBObject("song_id" -> 1))
-    // 修正索引字段
 
     // 关闭 MongoDB 客户端连接
     mongoClient.close()
   }
 
-  // 将数据保存到 Elasticsearch 中的方法，目前为空
-  def storeDataInES(songDF:DataFrame)(implicit eSConfig: ESConfig): Unit = {
-    //新建一个配置
-    val settings:Settings=Settings.builder().put("cluster.name",eSConfig.clustername).build()
+  // 将数据保存到 Elasticsearch 中的方法
+  def storeDataInES(songDF: DataFrame)(implicit eSConfig: ESConfig): Unit = {
+    // 新建一个配置
+    val settings: Settings = Settings.builder().put("cluster.name", eSConfig.clustername).build()
 
-    //新建一个ES的客户端
-    val esClient=new PreBuiltTransportClient(settings)
+    // 新建一个 ES 的客户端
+    val esClient = new PreBuiltTransportClient(settings)
 
-      //需要将TransportHosts添加到esClient中
-    val REGEX_HOST_PORT="(.+):(\\d+)".r
-    eSConfig.transportHosts.split(",").foreach{
-      case REGEX_HOST_PORT(host:String,port:String)=>{
-        esClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host),port.toInt))
+    // 需要将 TransportHosts 添加到 esClient 中
+    val REGEX_HOST_PORT = "(.+):(\\d+)".r
+    eSConfig.transportHosts.split(",").foreach {
+      case REGEX_HOST_PORT(host: String, port: String) => {
+        esClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port.toInt))
       }
     }
-    //需要清除掉ES中遗留的数据
-    if(esClient.admin().indices().exists(new IndicesExistsRequest(eSConfig.index)).actionGet().isExists){
+    // 需要清除掉 ES 中遗留的数据
+    if (esClient.admin().indices().exists(new IndicesExistsRequest(eSConfig.index)).actionGet().isExists) {
       esClient.admin().indices().delete(new DeleteIndexRequest(eSConfig.index))
     }
     esClient.admin().indices().create(new CreateIndexRequest(eSConfig.index))
-    //将数据写入到ES中
+    // 将数据写入到 ES 中
     songDF
       .write
-      .option("es.nodes",eSConfig.httpHost)
-      .option("es.http.timeout","100m")
-      .option("es.mapping.id","sid")
+      .option("es.nodes", eSConfig.httpHost)
+      .option("es.http.timeout", "100m")
+      .option("es.mapping.id", "sid")
       .mode("overwrite")
       .format("org.elasticsearch.spark.sql")
-      .save(eSConfig.index+"/"+ES_SONGS_INDEX)
+      .save(eSConfig.index + "/" + ES_SONGS_INDEX)
   }
 }
