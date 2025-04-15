@@ -1,7 +1,9 @@
 package com.server.service;
 
 import com.mongodb.MongoClient;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import com.server.model.recom.Recommendation;
 import com.server.model.request.*;
 import com.server.utils.Constant;
@@ -29,6 +31,15 @@ public class RecommenderService {
 
     @Autowired
     private TransportClient esClient;
+
+
+    private MongoDatabase mongoDatabase;
+
+    private MongoDatabase getMongoDatabase(){
+        if(mongoDatabase==null)
+            this.mongoDatabase=mongoClient.getDatabase(Constant.MONGO_DATABASE);
+        return mongoDatabase;
+    }
     /**
      * 获取混合推荐结果
      * @param request
@@ -78,7 +89,7 @@ public class RecommenderService {
      * @return
      */
     public List<Recommendation> getUserCFSongs(GetUserCFRequest request){
-        MongoCollection<Document> userCFCollection=mongoClient.getDatabase(Constant.MONGO_DATABASE).getCollection(Constant.MONGO_USER_RECS_COLLECTION);
+        MongoCollection<Document> userCFCollection=getMongoDatabase().getCollection(Constant.MONGO_USER_RECS_COLLECTION);
         Document document=userCFCollection.find(new Document("userId",request.getUserId())).first();
         return paraseDocument(document,request.getSum());
     }
@@ -101,7 +112,7 @@ public class RecommenderService {
      * @return
      */
     public List<Recommendation> getStreamRecsSongs(GetStreamRecsRequest request){
-        MongoCollection<Document> streamRecsCollection = mongoClient.getDatabase(Constant.MONGO_DATABASE).getCollection(Constant.MONGO_STREAMRECS_COLLECTION);
+        MongoCollection<Document> streamRecsCollection =getMongoDatabase().getCollection(Constant.MONGO_STREAMRECS_COLLECTION);
         Document document=streamRecsCollection.find(new Document("userId",request.getUserId())).first();
         return paraseDocument(document,request.getSum());
     }
@@ -118,4 +129,19 @@ public class RecommenderService {
             return recommendations;
         return paraseDocument(genderDocument,request.getNum());
     }
+
+    /**
+     * 获取最热歌曲
+     * @param request
+     * @return
+     */
+    public List<Recommendation> getPopularSongs(GetPopularSongsRequest request){
+        FindIterable<Document> documents=getMongoDatabase().getCollection(Constant.MONGO_POPULARSONGS_COLLECTION).find();
+        List<Recommendation> recommendations = new ArrayList<>();
+        for(Document document:documents){
+            recommendations.add(new Recommendation(document.getLong("songId"),0D));
+        }
+        return recommendations.subList(0,recommendations.size()>request.getNum()?request.getNum():recommendations.size());
+    }
+
 }

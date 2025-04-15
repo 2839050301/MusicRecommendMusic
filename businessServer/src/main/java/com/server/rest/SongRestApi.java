@@ -4,6 +4,7 @@ import com.server.model.core.Song;
 import com.server.model.core.User;
 import com.server.model.recom.Recommendation;
 import com.server.model.request.GetGenderTopSongsRequest;
+import com.server.model.request.GetPopularSongsRequest;
 import com.server.model.request.GetStreamRecsRequest;
 import com.server.model.request.GetUserCFRequest;
 import com.server.service.RecommenderService;
@@ -85,8 +86,12 @@ public class SongRestApi {
     }
 
     //提供热门推荐信息的接口
-    public Model geyHotRecommendation(Model model){
-        return null;
+    @RequestMapping(path = "/hot",produces = "application/json",method = RequestMethod.GET)
+    @ResponseBody
+    public Model geyHotRecommendation(@RequestParam("num") int num, Model model){
+        model.addAttribute("success",true);
+        model.addAttribute(("movies"),recommenderService.getPopularSongs(new GetPopularSongsRequest(num)));
+        return model;
     }
 
 
