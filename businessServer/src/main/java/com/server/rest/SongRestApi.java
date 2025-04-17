@@ -1,7 +1,11 @@
 package com.server.rest;
 
+import com.mongodb.MongoClient;
+import com.mongodb.client.FindIterable;
+import com.server.model.core.Singer;
 import com.server.model.core.Song;
 import com.server.model.core.User;
+import com.server.model.core.User_like;
 import com.server.model.recom.Recommendation;
 import com.server.model.request.GetGenderTopSongsRequest;
 import com.server.model.request.GetPopularSongsRequest;
@@ -10,24 +14,29 @@ import com.server.model.request.GetUserCFRequest;
 import com.server.service.RecommenderService;
 import com.server.service.SongService;
 import com.server.service.UserService;
+import com.server.utils.Constant;
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.jws.WebParam;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 //用于处理电影相关的功能
 @Controller
 @RequestMapping("/rest/songs")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
 public class SongRestApi {
+
+    private static final Logger LOGGER = Logger.getLogger(SongRestApi.class.getName());
 
     @Autowired
     private RecommenderService recommenderService;
@@ -37,86 +46,194 @@ public class SongRestApi {
 
     @Autowired
     private SongService songService;
+
+
+
     //首页
 
+
+
+
+
+
+
+
+
+
+    
+    //确保这个方法是实际实现
+    @RequestMapping(path = "/fuzzy", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model fuzzySearch(@RequestParam("query") String query, Model model) {
+        try {
+            List<Map<String, Object>> results = recommenderService.fuzzySearch(query);
+            model.addAttribute("success", true);
+            model.addAttribute("songs", results); // 确保前端使用相同的字段名
+            if (results.isEmpty()) {
+                LOGGER.info("未找到匹配歌曲: " + query);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "模糊查询失败: " + query, e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "查询失败: " + e.getMessage());
+        }
+        return model;
+    }
+
+    //获取单个歌曲信息
+    @RequestMapping(path = "/song", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model getSongInfo(@RequestParam("songId") long songId, Model model) {
+        try {
+            Song song = songService.getSongById(songId);
+            model.addAttribute("success", song != null);
+            model.addAttribute("song", song);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting song info", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
+        }
+        return model;
+    }
+
+    //提供歌曲类别的查找
+    public Model getGenresSongs(String genres, Model model) {
+        return null;
+    }
+
+    // 提供热门歌曲榜单接口
+    @RequestMapping(path = "/hotSongs", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model getHotSongs(@RequestParam("num") int num, Model model) {
+        try {
+            List<Song> songs = songService.getHotSongs(num);
+            model.addAttribute("success", true);
+            model.addAttribute("songs", songs);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting hot songs", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
+        }
+        return model;
+    }
+
+    @RequestMapping(path = "/singers", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model getSingers(@RequestParam("num") int num, Model model) {
+        try {
+            List<Singer> singers = songService.getSingers(num);
+            model.addAttribute("success", true);
+            model.addAttribute("singers", singers);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting singers", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
+        }
+        return model;
+    }
+
     /**
-     * 提供获取实时推荐的接口
-     * 访问url /rest/songs/stream?userId=123
-     * 返回:{success:true,songs[]}
-     * @param username
+     * 提供歌手首字母的查找
+     * @param initial
      * @param model
      * @return
      */
-    @RequestMapping(path = "/stream",produces = "application/json",method = RequestMethod.GET)
+    @RequestMapping(path = "/singers/initial", produces = "application/json", method = RequestMethod.GET)
     @ResponseBody
-    public Model getRealtimeRecommendation(@RequestParam("username") String username, @RequestParam("num") int sum,Model model){
-        User user=userService.findUserByUsername(username);
-        List<Recommendation> recommendations=recommenderService.getStreamRecsSongs(new GetStreamRecsRequest(user.getUserId(),sum));
-        //处理冷启动
-        if(recommendations.size()==0){
-            recommendations=recommenderService.getGenderTopSongs(new GetGenderTopSongsRequest(user.getGender(),sum));
+    public Model getSingersByInitial(@RequestParam("initial") String initial, Model model) {
+        try {
+            List<Singer> singers = songService.getSingersByInitial(initial);
+            model.addAttribute("success", true);
+            model.addAttribute("singers", singers);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting singers by initial", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
         }
-        List<Long> ids=new ArrayList<>();
-        for(Recommendation recom:recommendations){
-            ids.add(recom.getSongId());
-        }
-        List<Song> result=songService.getSongsBySid(ids);
-        model.addAttribute("success",true);
-        model.addAttribute("songs",result);
-        return null;
+        return model;
     }
 
-    //提供离线推荐信息的接口
-    @RequestMapping(path = "/offline",produces = "application/json",method = RequestMethod.GET)
+    @RequestMapping(path = "/singer", produces = "application/json", method = RequestMethod.GET)
     @ResponseBody
-    public Model getOfflineRecommendation(@RequestParam("username") String username,@RequestParam("num") int num,Model model){
-        User user=userService.findUserByUsername(username);
-        List<Recommendation> recommendations=recommenderService.getUserCFSongs(new GetUserCFRequest(user.getUserId(),num));
-        if(recommendations.size()==0){
-            recommendations=recommenderService.getGenderTopSongs(new GetGenderTopSongsRequest(user.getGender(),num));
+    public Model getSinger(@RequestParam("singerId") long singerId, Model model) {
+        try {
+            Singer singer = songService.getSingerById(singerId);
+            model.addAttribute("success", singer != null);
+            model.addAttribute("singer", singer);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting singer", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
         }
-        List<Long> ids=new ArrayList<>();
-        for(Recommendation recom:recommendations){
-            ids.add(recom.getSongId());
-        }
-        List<Song> result=songService.getSongsBySid(ids);
-        model.addAttribute("success",true);
-        model.addAttribute("songs",result);
-        return null;
+        return model;
     }
 
-    //提供热门推荐信息的接口
-    @RequestMapping(path = "/hot",produces = "application/json",method = RequestMethod.GET)
+    // 确保getSongsBySingerId方法正确实现
+    @RequestMapping(path = "/singer/songs", produces = "application/json", method = RequestMethod.GET)
     @ResponseBody
-    public Model geyHotRecommendation(@RequestParam("num") int num, Model model){
-        model.addAttribute("success",true);
-        model.addAttribute(("movies"),recommenderService.getPopularSongs(new GetPopularSongsRequest(num)));
+    public Model getSongsBySingerId(@RequestParam("singerId") long singerId, Model model) {
+        try {
+            List<Song> songs = songService.getSongsBySingerId(singerId);
+            model.addAttribute("success", true);
+            model.addAttribute("songs", songs);  // 确保字段名是"songs"
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while getting songs by singer id", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "An error occurred: " + (e.getMessage() != null? e.getMessage() : "unknown error"));
+        }
+        return model;
+    }
+
+    @RequestMapping(path = "/user/liked-songs", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model getUserLikedSongs(@RequestParam("userId") int userId, Model model) {
+        try {
+            List<User_like> userLikes = songService.getUserLikedSongs(userId);
+            model.addAttribute("success", true);
+            model.addAttribute("User_like", userLikes);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "获取用户喜欢歌曲失败", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "获取用户喜欢歌曲失败");
+        }
+        return model;
+    }
+
+    @RequestMapping(path = "/unlike", produces = "application/json", method = RequestMethod.POST)
+    @ResponseBody
+    public Model unlikeSong(@RequestParam("userId") int userId, 
+                       @RequestParam("songId") long songId, 
+                       Model model) {
+        try {
+            boolean success = songService.unlikeSong(userId, songId);
+            model.addAttribute("success", success);
+            model.addAttribute("message", success ? "取消喜欢成功" : "取消喜欢失败");
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "取消喜欢歌曲失败", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "取消喜欢歌曲失败");
+        }
+        return model;
+    }
+
+    @RequestMapping(path = "/like", produces = "application/json", method = RequestMethod.POST)
+    @ResponseBody
+    public Model likeSong(
+        @RequestParam("userId") int userId, 
+        @RequestParam("songId") long songId, 
+        Model model) {
+        try {
+            boolean success = songService.likeSong(userId, songId);
+            model.addAttribute("success", success);
+            model.addAttribute("message", success ? "添加喜欢成功" : "添加喜欢失败");
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "添加喜欢歌曲失败", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "参数错误: " + e.getMessage());
+        }
         return model;
     }
 
 
-    //*********** 模糊检索 ***********
-    public Model getFuzzySearchSongs(String query,Model model){
-        return null;
-    }
 
-    //获取单个歌曲信息
-    public Model getSongInfo(long songId,Model model){
-        return null;
-    }
-
-    //提供歌曲收藏的功能
-    public Model songLike(long songId,Model model){
-        return null;
-    }
-
-    //提供歌曲类别的查找
-    public Model getGenresSongs(String genres,Model model){
-        return null;
-    }
-
-    //用户收藏页面
-    public Model getUserLikeSongs(String username,Model model){
-        return null;
-    }
 }

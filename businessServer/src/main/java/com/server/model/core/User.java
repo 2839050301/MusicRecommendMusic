@@ -2,6 +2,8 @@ package com.server.model.core;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.util.List;
+
 public class User {
 
     @JsonIgnore
@@ -11,7 +13,6 @@ public class User {
     private String username;
     private String password;
     private String gender;
-
 
     public String getUsername() {
         return username;

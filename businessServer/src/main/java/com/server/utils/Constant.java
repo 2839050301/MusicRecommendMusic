@@ -10,7 +10,7 @@ public class Constant {
     public static final String MONGO_SONG_COLLECTION = "Songs";
 
         //************* 歌手表 *************
-    public static final String MONGO_SINGER_COLLLECTION = "Singer";
+    public static final String MONGO_SINGER_COLLECTION = "Singer";
 
         //************* 歌曲标签表 *************
     public static final String MONGO_TAG_COLLECTION = "Tag";
@@ -45,8 +45,6 @@ public class Constant {
 
     //************* ES *************
     public static final String ES_INDEX = "recommender";
-
-        //************* 使用的Type *************
     public static final String ES_TYPE = "Songs";
 
         //************* Redis *************

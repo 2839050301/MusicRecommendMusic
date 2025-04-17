@@ -11,6 +11,7 @@
     <file url="file://$PROJECT_DIR$/recommender/StreamingRecommender/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/recommender/dataloader/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/recommender/dataloader/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/recommender/dataloader/src/main/scala/com/dataloader/DataLoader.scala" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/recommender/kafkaStream/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/recommender/kafkaStream/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/recommender/src/main/java" charset="UTF-8" />

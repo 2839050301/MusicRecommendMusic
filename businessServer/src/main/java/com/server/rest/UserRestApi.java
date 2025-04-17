@@ -8,12 +8,14 @@ import com.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 //用于处理User相关的内容
+
+@CrossOrigin(origins = "*")  // 确保类上有这个注解
 @Controller
 @RequestMapping("/rest/users")
 public class UserRestApi {
@@ -28,14 +30,17 @@ public class UserRestApi {
      * @param username
      * @param password
      * @param gender
-     * @param model
+     * @param
      * @return
      */
     @RequestMapping(path="/register",produces = "application/json",method = RequestMethod.GET)
     @ResponseBody
-    public Model registerUser(@RequestParam("username") String username,@RequestParam("password") String password,@RequestParam("gender") String gender, Model model) {
-        model.addAttribute("success", userService.registerUser(new RegisterUserRequest(username,password,gender)));
-        return null;
+    public Map<String, Object> registerUser(@RequestParam("username") String username,
+                                            @RequestParam("password") String password,
+                                            @RequestParam("gender") String gender) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", userService.registerUser(new RegisterUserRequest(username,password,gender)));
+        return result;
     }
 
     /**
@@ -44,15 +49,28 @@ public class UserRestApi {
      * 返回:(success:true)
      * @param username
      * @param password
-     * @param model
+     * @param
      * @return
      */
     @RequestMapping(path = "/login",produces = "application/json",method = RequestMethod.GET)
-    public Model login(@RequestParam("username") String username,@RequestParam("password") String password, Model model) {
-        model.addAttribute("success",userService.loginUser(new LoginUserRequest(username,password)));
-        return model;
-
+    @ResponseBody 
+    public Map<String, Object> login(@RequestParam("username") String username,
+                                   @RequestParam("password") String password) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", userService.loginUser(new LoginUserRequest(username,password)));
+        return result;
     }
 
-
+    /**
+     * 获取用户ID
+     */
+    @RequestMapping(path = "/userId", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getUserId(@RequestParam("username") String username) {
+        Map<String, Object> result = new HashMap<>();
+        int userId = userService.getUserIdByUsername(username);
+        result.put("success", userId != -1);
+        result.put("userId", userId);
+        return result;
+    }
 }

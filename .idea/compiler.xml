@@ -17,6 +17,7 @@
     <bytecodeTargetLevel>
       <module name="statiscsRecommender" target="1.8" />
       <module name="website" target="1.8" />
+      <module name="Website" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

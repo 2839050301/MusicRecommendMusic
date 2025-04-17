@@ -14,6 +14,7 @@ public class RegisterUserRequest {
         this.gender= gender;
     }
 
+
     public String getUsername() {
         return username;
     }
@@ -30,11 +31,11 @@ public class RegisterUserRequest {
         this.password = password;
     }
 
-    public String getgender() {
+    public String getGender() {
         return gender;
     }
 
-    public void setgenre(String gender) {
+    public void setGender(String gender) {
         this.gender = gender;
     }
 }

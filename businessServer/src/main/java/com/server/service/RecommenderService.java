@@ -1,25 +1,28 @@
 package com.server.service;
 
 import com.mongodb.MongoClient;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.server.model.recom.Recommendation;
 import com.server.model.request.*;
 import com.server.utils.Constant;
 import org.bson.Document;
+import org.elasticsearch.action.admin.indices.analyze.AnalyzeResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.MoreLikeThisQueryBuilder;
+import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.net.InetAddress;
+import java.net.URLDecoder;
+import java.util.*;
 
 
 //用于推荐服务
@@ -40,108 +43,80 @@ public class RecommenderService {
             this.mongoDatabase=mongoClient.getDatabase(Constant.MONGO_DATABASE);
         return mongoDatabase;
     }
-    /**
-     * 获取混合推荐结果
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getHybridRecommendations(GetHybirdRecommendationRequest request) {
-        //获得实时推荐结果
-        //List<Recommendation> streamRecs = getStreamRecsSongs(new GetStreamRecsRequest(request.getUserId(),request.getNum()));
-
-        //获得ALS离线推荐结果
-        //List<Recommendation> userRecs = getUserCFSongs(new GetUserCFRequest(request.getUserId(),request.getNum()));
-
-        //获得基于内容推荐结果
 
 
-        //返回结果
-        return null;
-    }
 
-    /**
-     * 获取基于内容的推荐结果
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getContentBasedRecommendation(GetContentBasedRecommendationRequest request){
-        MoreLikeThisQueryBuilder queryBuilder= QueryBuilders.moreLikeThisQuery(
-                new MoreLikeThisQueryBuilder.Item[]{
-                        new MoreLikeThisQueryBuilder.Item(Constant.ES_INDEX,Constant.ES_TYPE,String.valueOf(request.getSid()))
-                });
-        SearchResponse response=esClient.prepareSearch(Constant.ES_INDEX).setQuery(queryBuilder).setSize(request.getSum()).execute().actionGet();
-        return paraseESResponse(response);
-    }
+    // 模糊查询方法
+    // 修改后的模糊查询方法
+    public List<Map<String, Object>> fuzzySearch(String query) {
+        try {
+            String decodedQuery = URLDecoder.decode(query, "UTF-8");
+            
+            System.out.println("========= 查询调试信息 =========");
+            System.out.println("原始查询: " + query);
+            System.out.println("解码后查询: " + decodedQuery);
+            
+            // 添加查询分析调试
+            AnalyzeResponse analyzeResponse = esClient.admin().indices()
+                .prepareAnalyze(decodedQuery)
+                .setAnalyzer("ik_smart")
+                .get();
+            System.out.println("分词结果: " + analyzeResponse.getTokens());
 
-    //用于解析Elasticsearch的查询响应
-    private List<Recommendation> paraseESResponse(SearchResponse response) {
-        List<Recommendation> recommendations=new ArrayList<>();
-        for(SearchHit hit:response.getHits()) {
-            Map<String,Object> hitContens=hit.getSourceAsMap();
-            recommendations.add(new Recommendation((long)hitContens.get("sid"),0D));
+            // 构建多条件查询
+            SearchResponse response = esClient.prepareSearch(Constant.ES_INDEX)
+                .setTypes(Constant.ES_TYPE)
+                .setQuery(QueryBuilders.boolQuery()
+                    .should(QueryBuilders.matchQuery("sname_song", decodedQuery)
+                        .analyzer("ik_smart")  // 明确指定分词器
+                        .boost(3))
+                    .should(QueryBuilders.matchPhraseQuery("sname_song", decodedQuery)
+                        .slop(2)  // 适当减小词间距
+                        .analyzer("ik_smart")
+                        .boost(5))
+                    .should(QueryBuilders.termQuery("sname_song.keyword", decodedQuery)
+                        .boost(7))  // 完全匹配权重最高
+                    .minimumShouldMatch(1))
+                .setSize(10)
+                .get();
+
+            System.out.println("命中结果数: " + response.getHits().getTotalHits());
+            
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (SearchHit hit : response.getHits().getHits()) {
+                System.out.println("匹配结果: " + hit.getSourceAsString());
+                Map<String, Object> source = hit.getSourceAsMap();
+                Map<String, Object> songInfo = new HashMap<>();
+                songInfo.put("songId", source.get("songId"));
+                songInfo.put("sname", source.get("sname_song"));
+                songInfo.put("hot", source.get("hot"));
+                songInfo.put("url", source.get("url"));
+                songInfo.put("singerName", source.get("SingerName"));
+                songInfo.put("genre", source.get("GenreName"));
+                songInfo.put("tags", source.get("tags"));
+                songInfo.put("languages", source.get("languages"));
+                results.add(songInfo);
+            }
+            return results;
+        } catch (Exception e) {
+            System.err.println("模糊查询异常: " + e.getMessage());
+            e.printStackTrace();
+            return Collections.emptyList();
         }
-        return recommendations;
     }
 
-    /**
-     * 用于获取ALS算法中用户推荐矩阵
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getUserCFSongs(GetUserCFRequest request){
-        MongoCollection<Document> userCFCollection=getMongoDatabase().getCollection(Constant.MONGO_USER_RECS_COLLECTION);
-        Document document=userCFCollection.find(new Document("userId",request.getUserId())).first();
-        return paraseDocument(document,request.getSum());
-    }
-
-    //用于解析这个document
-    private List<Recommendation> paraseDocument(Document document,int sum) {
-        List<Recommendation> result=new ArrayList<>();
-        if(null==document||document.isEmpty())
-            return result;
-        ArrayList<Document> documents=document.get("recs",ArrayList.class);
-        for(Document item:documents){
-            result.add(new Recommendation(item.getLong("songId"),item.getDouble("score")));
+    // 初始化ES客户端方法
+    public void initEsClient() {
+        try {
+            Settings settings = Settings.builder()
+                    .put("cluster.name", "es-cluster") // 确保与ES服务端配置一致
+                    .build();
+            esClient = new PreBuiltTransportClient(settings)
+                    .addTransportAddress(new InetSocketTransportAddress(
+                            InetAddress.getByName("192.168.187.131"), 9300)); // 使用transport端口9300
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("初始化Elasticsearch客户端失败", e);
         }
-        return result.subList(0,result.size()>sum?sum:result.size());
     }
-
-    /**
-     * 实时推荐结果
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getStreamRecsSongs(GetStreamRecsRequest request){
-        MongoCollection<Document> streamRecsCollection =getMongoDatabase().getCollection(Constant.MONGO_STREAMRECS_COLLECTION);
-        Document document=streamRecsCollection.find(new Document("userId",request.getUserId())).first();
-        return paraseDocument(document,request.getSum());
-    }
-
-    /**
-     * 获取男女Top榜 用于处理冷启动问题
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getGenderTopSongs( GetGenderTopSongsRequest request){
-        Document genderDocument=mongoClient.getDatabase(Constant.MONGO_DATABASE).getCollection(Constant.MONGO_GENDERTOPSONGS_COLLECTION).find(new Document("gender",request.getGender())).first();
-        List<Recommendation> recommendations=new ArrayList<>();
-        if(genderDocument==null||genderDocument.isEmpty())
-            return recommendations;
-        return paraseDocument(genderDocument,request.getNum());
-    }
-
-    /**
-     * 获取最热歌曲
-     * @param request
-     * @return
-     */
-    public List<Recommendation> getPopularSongs(GetPopularSongsRequest request){
-        FindIterable<Document> documents=getMongoDatabase().getCollection(Constant.MONGO_POPULARSONGS_COLLECTION).find();
-        List<Recommendation> recommendations = new ArrayList<>();
-        for(Document document:documents){
-            recommendations.add(new Recommendation(document.getLong("songId"),0D));
-        }
-        return recommendations.subList(0,recommendations.size()>request.getNum()?request.getNum():recommendations.size());
-    }
-
 }

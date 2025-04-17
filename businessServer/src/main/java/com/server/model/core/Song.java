@@ -8,11 +8,11 @@ public class Song {
     @JsonIgnore
     private int _id;
 
-    private long sid;
+    private long songId;
 
     private String sname;
 
-    private long SingerId;
+    private  long SingerId;
 
     private int hot;
 
@@ -24,31 +24,27 @@ public class Song {
 
     private String languages;
 
-    public Song(long sid, String sname, long singerId, int hot, String url, int genre, String tags, String languages) {
-        this.sid = sid;
+    // 添加无参构造函数
+    public Song() {
+    }
+
+    public Song(long songId, String sname, long singerId, int hot, int genre, String url, String tags, String languages) {
+        this.songId = songId;
         this.sname = sname;
         SingerId = singerId;
         this.hot = hot;
-        this.url = url;
         this.genre = genre;
+        this.url = url;
         this.tags = tags;
         this.languages = languages;
     }
 
-    public int get_id() {
-        return _id;
+    public long getSongId() {
+        return songId;
     }
 
-    public void set_id(int _id) {
-        this._id = _id;
-    }
-
-    public long getSid() {
-        return sid;
-    }
-
-    public void setSid(long sid) {
-        this.sid = sid;
+    public void setSongId(long songId) {
+        this.songId = songId;
     }
 
     public String getSname() {
@@ -59,6 +55,14 @@ public class Song {
         this.sname = sname;
     }
 
+    public long getSingerId() {
+        return SingerId;
+    }
+
+    public void setSingerId(long singerId) {
+        SingerId = singerId;
+    }
+
     public int getHot() {
         return hot;
     }
@@ -67,12 +71,12 @@ public class Song {
         this.hot = hot;
     }
 
-    public long getSingerId() {
-        return SingerId;
+    public String getUrl() {
+        return url;
     }
 
-    public void setSingerId(long singerId) {
-        SingerId = singerId;
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     public int getGenre() {
@@ -91,19 +95,19 @@ public class Song {
         this.tags = tags;
     }
 
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
     public String getLanguages() {
         return languages;
     }
 
     public void setLanguages(String languages) {
         this.languages = languages;
+    }
+
+    public int get_id() {
+        return _id;
+    }
+
+    public void set_id(int _id) {
+        this._id = _id;
     }
 }

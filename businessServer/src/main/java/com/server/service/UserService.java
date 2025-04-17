@@ -69,7 +69,7 @@ public class UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
-        user.setGender(request.getgender());
+        user.setGender(request.getGender());
 
         //插入一个用户
         Document document = userToDocument(user);
@@ -103,5 +103,18 @@ public class UserService {
         if(null == document||document.isEmpty())
             return null;
         return documentToUser(document);
+    }
+
+    /**
+     * 通过用户名获取用户ID
+     * @param username 用户名
+     * @return 用户ID，如果用户不存在返回-1
+     */
+    public int getUserIdByUsername(String username) {
+        Document document = getUserCollection()
+            .find(new Document("username", username))
+            .projection(new Document("userId", 1))
+            .first();
+        return document != null ? document.getInteger("userId", -1) : -1;
     }
 }
