@@ -74,6 +74,7 @@ export default {
           path: '/search',
           query: { q: encodeURIComponent(this.searchQuery.trim()) }
         })
+        this.searchQuery = '' // 清空搜索框
       }
     }
   }

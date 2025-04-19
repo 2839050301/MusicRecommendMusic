@@ -11,10 +11,12 @@
           <p>暂无歌曲数据</p>
         </div>
         <div v-else class="song-list">
+          <!-- 修改歌曲项部分 -->
           <div
             v-for="song in songs"
             :key="song.songId"
             class="song-item"
+            @click="handleSongItemClick($event, song.songId)"
           >
             <div class="song-cover">
               <img
@@ -185,9 +187,21 @@ export default {
     },
     handleImageError(e) {
       e.target.src = require('@/assets/default-music-cover.jpg');
-    }
+    },
+    viewSongDetail(songId) {
+      console.log('跳转到歌曲详情:', songId); // 调试用
+      this.$router.push(`/song/${songId}`);
+    },
+    handleSongItemClick(event, songId) {
+      // 检查点击是否来自like-btn或其子元素
+      if (event.target.closest('.like-btn')) {
+        return; // 如果是点击了喜欢按钮，则不跳转
+      }
+      this.$router.push(`/song/${songId}`);
+    },
+
   }
-};
+}
 </script>
 
 <style scoped>

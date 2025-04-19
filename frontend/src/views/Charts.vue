@@ -11,11 +11,12 @@
             <p>暂无排行榜数据</p>
           </div>
           <div v-else>
+            <!-- 修改歌曲项点击事件 -->
             <div 
               v-for="(song, index) in songs" 
               :key="song.id || index"
               class="chart-item"
-              @click="playSong(song)"
+              @click="viewSongDetail(song.songId)"
             >
               <div class="rank">{{ index + 1 }}</div>
               <div class="song-cover">
@@ -192,7 +193,14 @@ export default {
       const userId = localStorage.getItem('userId') || 1;
       const stored = localStorage.getItem(`likedSongs_${userId}`);
       this.likedSongIds = stored ? JSON.parse(stored) : [];
-    }
+    },
+    viewSongDetail(songId) {
+      if (!songId) {
+        console.error('无效的歌曲ID');
+        return;
+      }
+      this.$router.push(`/song/${songId}`);
+    },
   }
 };
 </script>
@@ -382,3 +390,5 @@ export default {
   }
 }
 </style>
+
+

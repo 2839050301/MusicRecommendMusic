@@ -23,12 +23,15 @@ import org.springframework.stereotype.Service;
 import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 //用于推荐服务
 @Service
 public class RecommenderService {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(RecommenderService.class);
+    
     @Autowired
     private MongoClient mongoClient;
 
@@ -117,6 +120,70 @@ public class RecommenderService {
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("初始化Elasticsearch客户端失败", e);
+        }
+    }
+
+    /**
+     * 获取基于内容的歌曲推荐
+     * @param songId 基准歌曲ID
+     * @param num 推荐数量
+     * @return 推荐歌曲列表
+     */
+    public List<Recommendation> getContentBasedRecommendations(long songId, int num) {
+        try {
+            MongoCollection<Document> contentRecsCollection = getMongoDatabase()
+                    .getCollection(Constant.MONGO_CONTENT_SONG_RECS_COLLECTION);
+            
+            // 查询指定歌曲的推荐列表
+            Document query = new Document("songId", songId);
+            Document recsDoc = contentRecsCollection.find(query).first();
+            
+            if (recsDoc == null) {
+                return Collections.emptyList();
+            }
+            
+            // 解析推荐结果
+            List<Document> recsDocs = (List<Document>) recsDoc.get("recs");
+            List<Recommendation> recommendations = new ArrayList<>();
+            
+            // 按score降序排序并限制数量
+            recsDocs.stream()
+                .sorted((d1, d2) -> Double.compare(d2.getDouble("score"), d1.getDouble("score")))
+                .limit(num)
+                .forEach(doc -> {
+                    recommendations.add(new Recommendation(
+                        doc.getLong("songId"),
+                        doc.getDouble("score")
+                    ));
+                });
+            
+            return recommendations;
+        } catch (Exception e) {
+            LOGGER.error("获取基于内容的推荐失败", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 从ES获取歌曲详情
+     */
+    public Map<String, Object> getSongDetailFromES(long songId) {
+        try {
+            SearchResponse response = esClient.prepareSearch(Constant.ES_INDEX)
+                .setTypes(Constant.ES_TYPE)
+                .setQuery(QueryBuilders.termQuery("songId", songId))
+                .get();
+    
+            if (response.getHits().getTotalHits() == 0) {
+                return null;
+            }
+    
+            SearchHit hit = response.getHits().getHits()[0];
+            // 直接返回ES原始数据，不进行过滤
+            return hit.getSourceAsMap();
+        } catch (Exception e) {
+            LOGGER.error("从ES获取歌曲详情失败", e);
+            return null;
         }
     }
 }

@@ -10,7 +10,13 @@
         <p>没有找到相关歌曲</p>
       </div>
       <div v-else class="song-grid">
-        <div v-for="song in results" :key="song.songId" class="song-card">
+        <!-- 修改歌曲项点击事件 -->
+        <div 
+          v-for="song in results" 
+          :key="song.songId" 
+          class="song-card"
+          @click="viewSongDetail(song.songId)"
+        >
           <div class="song-cover">
             <img :src="song.url || require('@/assets/default-music-cover.jpg')">
           </div>
@@ -76,18 +82,27 @@ export default {
       this.loading = true
       try {
         const query = decodeURIComponent(this.$route.query.q || '')
+        if (!query.trim()) {
+          this.results = []
+          return
+        }
+        
         const response = await axios.get('http://localhost:8088/rest/songs/fuzzy', {
           params: { query }
         })
         
         if (response.data?.success) {
           this.results = response.data.songs || []
+          if (this.results.length === 0) {
+            this.$message.info('未找到相关歌曲')
+          }
         } else {
           throw new Error(response.data?.message || '搜索失败')
         }
       } catch (error) {
         console.error('搜索失败:', error)
         this.$message.error(error.message || '搜索失败')
+        this.results = []
       } finally {
         this.loading = false
       }
@@ -116,7 +131,14 @@ export default {
         console.error('操作失败:', error);
         this.$message.error(error.message || '操作失败');
       }
-    }
+    },
+    viewSongDetail(songId) {
+      if (!songId) {
+        console.error('无效的歌曲ID');
+        return;
+      }
+      this.$router.push(`/song/${songId}`);
+    },
   }
 }
 </script>

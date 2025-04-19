@@ -12,6 +12,7 @@
             v-for="song in likedSongs"
             :key="song.songId"
             class="song-item"
+            @click="viewSongDetail(song.songId)"
           >
             <div class="song-cover">
               <img
@@ -25,9 +26,7 @@
               <p>{{ song.singerName }}</p>
             </div>
             <button
-              @click="toggleLike(song.songId, false)"
-              class="like-btn"
-            >
+              @click.stop="toggleLike(song.songId, false)" class="like-btn">
               <i class="bi bi-heart-fill"></i> 取消喜欢
             </button>
           </div>
@@ -59,32 +58,38 @@ export default {
       try {
         const likedResponse = await axios.get(
           'http://localhost:8088/rest/songs/user/liked-songs',
-          { params: { userId: this.currentUserId } }
+          { 
+            params: { 
+              userId: this.currentUserId,
+              sort: 'desc' // 明确指定排序方式
+            } 
+          }
         )
-
+        
+        // 后端已排序，这里可以直接使用
         if (likedResponse.data?.success && likedResponse.data.User_like) {
           const songIds = likedResponse.data.User_like.map(item => item.songId)
-
+    
           // 获取歌曲详情时同时获取歌手信息
           this.likedSongs = await Promise.all(
             songIds.map(async id => {
               const songRes = await axios.get('http://localhost:8088/rest/songs/song', {
                 params: { songId: id }
               })
-
+    
               if (songRes.data?.success && songRes.data.song) {
                 const song = songRes.data.song
                 // 修复字段名大小写问题，同时确保歌手ID存在
                 const singerId = song.singerId || song.SingerId
                 let singerName = '未知歌手'
-
+    
                 if (singerId) {
                   const singerRes = await axios.get('http://localhost:8088/rest/songs/singer', {
                     params: { singerId: Number(singerId) }
                   })
                   singerName = singerRes.data?.singer?.sname || `歌手ID: ${singerId}`
                 }
-
+    
                 return {
                   ...song,
                   singerName // 确保使用统一的字段名
@@ -123,9 +128,9 @@ export default {
         if (response.data?.success) {
           this.$message.success({
             message: isLike ? '已添加到喜欢列表' : '已取消喜欢',
-            duration: 500  // 明确设置持续时间
+            duration: 300  // 保持500ms
           })
-          this.fetchLikedSongs(); // 刷新喜欢列表
+          this.fetchLikedSongs();
         } else {
           throw new Error(response.data?.message || '操作失败');
         }
@@ -156,7 +161,14 @@ export default {
         console.error('获取歌手信息失败:', error);
         return `歌手ID: ${singerId}`;
       }
-    }
+    },
+    viewSongDetail(songId) {
+      if (!songId) {
+        console.error('无效的歌曲ID');
+        return;
+      }
+      this.$router.push(`/song/${songId}`);
+    },
   }
 }
 </script>

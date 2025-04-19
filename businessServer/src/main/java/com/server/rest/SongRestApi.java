@@ -23,10 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.jws.WebParam;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -234,6 +231,85 @@ public class SongRestApi {
         return model;
     }
 
+    // 基于内容的推荐接口
+    @RequestMapping(path = "/content-based", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Model getContentBasedRecommendation(
+            @RequestParam("songId") long songId,
+            @RequestParam(value = "num", defaultValue = "10") int num,
+            Model model) {
+        try {
+            List<Recommendation> recommendations = recommenderService.getContentBasedRecommendations(songId, num);
+            model.addAttribute("success", true);
+            model.addAttribute("recommendations", recommendations);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "获取基于内容的推荐失败", e);
+            model.addAttribute("success", false);
+            model.addAttribute("message", "获取推荐失败: " + e.getMessage());
+        }
+        return model;
+    }
 
+    @RequestMapping(path = "/es/song", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getSongFromES(@RequestParam("songId") long songId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Map<String, Object> songDetail = recommenderService.getSongDetailFromES(songId);
+            
+            if (songDetail == null) {
+                result.put("success", false);
+                result.put("message", "歌曲不存在");
+                return result;
+            }
+            
+            // 确保返回字段名统一
+            Map<String, Object> formattedSong = new HashMap<>();
+            formattedSong.put("songId", songDetail.get("songId"));
+            formattedSong.put("sname_song", songDetail.get("sname_song"));
+            formattedSong.put("SingerName", songDetail.get("SingerName"));
+            formattedSong.put("GenreName", songDetail.get("GenreName"));
+            formattedSong.put("hot", songDetail.get("hot"));
+            formattedSong.put("url", songDetail.get("url"));
+            
+            result.put("success", true);
+            result.put("song", formattedSong);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "从ES获取歌曲详情失败", e);
+            result.put("success", false);
+            result.put("message", "获取歌曲详情失败");
+        }
+        return result;
+    }
+
+    @RequestMapping(path = "/detail", produces = "application/json", method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getSongDetail(
+            @RequestParam("songId") long songId,
+            @RequestParam(value = "num", defaultValue = "5") int num) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            // 从ES获取歌曲详情
+            Map<String, Object> songDetail = recommenderService.getSongDetailFromES(songId);
+            
+            if (songDetail == null) {
+                result.put("success", false);
+                result.put("message", "歌曲不存在");
+                return result;
+            }
+            
+            // 获取相关音乐推荐
+            List<Recommendation> recommendations = recommenderService.getContentBasedRecommendations(songId, num);
+            
+            result.put("success", true);
+            result.put("song", songDetail);
+            result.put("recommendations", recommendations);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "获取歌曲详情失败", e);
+            result.put("success", false);
+            result.put("message", "获取歌曲详情失败");
+        }
+        return result;
+    }
 
 }

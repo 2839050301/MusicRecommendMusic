@@ -42,6 +42,9 @@ public class Constant {
         //************* 实时推荐歌曲表 *************
     public static final String MONGO_STREAMRECS_COLLECTION = "StreamRecs";
 
+        //************* 实时推荐歌曲表 *************
+    public static final String MONGO_CONTENT_SONG_RECS_COLLECTION = "ContentSongRecs";
+
 
     //************* ES *************
     public static final String ES_INDEX = "recommender";

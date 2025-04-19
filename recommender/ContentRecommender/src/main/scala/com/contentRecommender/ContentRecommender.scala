@@ -90,31 +90,32 @@ object ContentRecommender {
 
     val songRecsBroadcast = spark.sparkContext.broadcast(songRecs.collectAsMap())
 
+    // 修改推荐得分的计算部分
     val recommendations = songRecs.mapPartitions { iter =>
         val localData = songRecsBroadcast.value
         iter.flatMap { case (songId, (singerId1, genre1, vector1)) =>
           localData.iterator
             .filter(_._1 != songId)
             .map { case (otherId, (singerId2, genre2, vector2)) =>
+              // 基于隐式反馈调整权重计算
               val tagScore = consinSim(vector1, vector2)
               val singerScore = if (singerId1 == singerId2) 1.0 else 0.0
               val genreScore = if (genre1 == genre2) 1.0 else 0.0
-
-              // 设置特征权重
-              val singerWeight = 0.2
-              val genreWeight = 0.4
-              val tagsWeight = 0.4
-
-              // 按权重计算最终得分
+              
+              // 调整权重分配，更侧重内容特征
+              val singerWeight = 0.1  // 降低歌手权重
+              val genreWeight = 0.3   // 流派权重
+              val tagsWeight = 0.6    // 提高标签权重
+              
               val score = tagScore * tagsWeight + singerScore * singerWeight + genreScore * genreWeight
               (songId, (otherId, score))
             }
-            .filter(_._2._2 > 0.6)
+            .filter(_._2._2 > 0.4)  // 降低相似度阈值
             .toSeq
-            .sortBy(-_._2._2) // 按得分降序排序
-            .take(50) // 取前20个最高分
+            .sortBy(-_._2._2)
+            .take(30)  // 减少推荐数量
         }
-      }
+    }
       .groupByKey()
       .map {
         case (songId, items) =>

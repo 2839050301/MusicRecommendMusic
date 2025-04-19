@@ -6,6 +6,8 @@ import Charts from '../views/Charts.vue'
 import Singers from '../views/Singers.vue'  // Add this import
 import SingerDetail from '../views/SingerDetail.vue'
 import MyMusic from '../views/MyMusic.vue'
+import SongDetail from '@/views/SongDetail.vue'
+
 
 const routes = [
   {
@@ -45,15 +47,19 @@ const routes = [
   {
     path: '/my-music',
     name: 'MyMusic',
-    component: MyMusic,
-    meta: { requiresAuth: true }
+    component: () => import('../views/MyMusic.vue')
   },
-  // 在路由配置中添加
-  // 修改路由配置，确保正确加载Search组件
+  {
+    path: '/song/:id',
+    name: 'SongDetail',
+    component: () => import('../views/SongDetail.vue'),
+    props: true
+  },
   {
     path: '/search',
     name: 'Search',
-    component: () => import('@/views/Search.vue')  // 使用@别名确保路径正确
+    component: () => import('../views/Search.vue'),
+    props: route => ({ query: route.query.q })
   }
 ]
 
