@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/ContentRecommender.iml" filepath="$PROJECT_DIR$/ContentRecommender.iml" />
       <module fileurl="file://$PROJECT_DIR$/OfflineRecommender.iml" filepath="$PROJECT_DIR$/OfflineRecommender.iml" />
     </modules>
   </component>

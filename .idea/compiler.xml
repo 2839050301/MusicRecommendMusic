@@ -10,6 +10,7 @@
         <module name="statisticsRecommender" />
         <module name="dataloader" />
         <module name="kafkaStream" />
+        <module name="ContentRecommender" />
         <module name="OfflineRecommender" />
         <module name="businessServer" />
       </profile>

@@ -139,7 +139,10 @@ export default {
         });
 
         if (response.data?.success) {
-          this.$message.success(isLike ? '已收藏' : '已取消收藏');
+          this.$message.success({
+            message: isLike ? '已收藏' : '已取消收藏',
+            duration:500
+          });
           song.isLiked = isLike;
         } else {
           throw new Error(response.data?.message || '操作失败');

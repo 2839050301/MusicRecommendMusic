@@ -72,12 +72,15 @@ export default {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  width: 100%;  /* 新增 */
   background: linear-gradient(135deg, #31c27c, #1a7d5d);
 }
 
 .auth-box {
   width: 380px;
+  max-width: 95%;  /* 新增 - 防止在小屏幕上溢出 */
   padding: 40px;
+  margin: 20px;  /* 新增 - 提供呼吸空间 */
   background: white;
   border-radius: 10px;
   box-shadow: 0 5px 20px rgba(0,0,0,0.1);
@@ -111,22 +114,25 @@ export default {
   width: 100%;
 }
 
+.form-group input,
+.form-select {
+  width: 100%;  /* 修改为100%宽度 */
+  padding: 12px 15px 12px 40px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
 .form-group i {
   position: absolute;
   left: 15px;
   top: 50%;
   transform: translateY(-50%);
   color: #999;
-}
-
-.form-group input,
-.form-select {
-  width: 100%;
-  padding: 12px 15px 12px 40px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 14px;
-  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 2;  /* 新增：确保图标在输入框上方 */
 }
 
 .form-select {

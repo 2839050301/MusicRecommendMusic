@@ -66,3 +66,8 @@ html {
 .btn-primary:hover {
   background: var(--secondary-color);
 }
+
+/* 确保没有覆盖Element的动画时间 */
+.el-message {
+  transition-duration: 0.3s !important; /* 不应小于全局配置的duration */
+}

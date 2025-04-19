@@ -121,7 +121,10 @@ export default {
         });
 
         if (response.data?.success) {
-          this.$message.success(isLike ? '已添加到喜欢列表' : '已取消喜欢');
+          this.$message.success({
+            message: isLike ? '已添加到喜欢列表' : '已取消喜欢',
+            duration: 500  // 明确设置持续时间
+          })
           this.fetchLikedSongs(); // 刷新喜欢列表
         } else {
           throw new Error(response.data?.message || '操作失败');

@@ -151,7 +151,10 @@ export default {
         });
 
         if (response.data?.success) {
-          this.$message.success(isLike ? '已添加到喜欢列表' : '已取消喜欢');
+          this.$message.success({
+            message: isLike ? '已添加到喜欢列表' : '已取消喜欢',
+            duration: 500
+          });
           this.likedSongIds = isLike
             ? [...this.likedSongIds, songId]
             : this.likedSongIds.filter(id => id !== songId);
